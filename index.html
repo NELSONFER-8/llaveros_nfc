@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consulta de Llavero NFC</title>
   <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background-color: #121212;
@@ -14,166 +14,103 @@
       padding: 15px;
       display: flex;
       justify-content: center;
-      align-items: flex-start;
+      align-items: center;
       min-height: 100vh;
     }
     .card {
       background-color: #1e1e1e;
-      border-radius: 16px;
+      border-radius: 12px;
       padding: 24px;
       width: 100%;
       max-width: 480px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.7);
-      margin-top: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
     }
     h2, h3 { text-align: center; color: #ffffff; margin-top: 0; }
     .badge {
       display: inline-block;
-      padding: 6px 16px;
+      padding: 4px 12px;
       border-radius: 20px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      margin-bottom: 15px;
     }
     .badge-disponible { background-color: #27ae60; color: #fff; }
     .badge-asignado { background-color: #2980b9; color: #fff; }
-    .field-group { margin-bottom: 16px; }
-    label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: 500; }
+    .field-group { margin-bottom: 15px; }
+    label { display: block; font-size: 13px; color: #aaa; margin-bottom: 5px; }
     input[type="text"], input[type="tel"] {
       width: 100%;
-      padding: 12px;
-      border-radius: 8px;
+      padding: 10px;
+      border-radius: 6px;
       border: 1px solid #333;
       background-color: #2a2a2a;
       color: #fff;
       font-size: 15px;
-      transition: border-color 0.2s;
     }
-    input:focus { outline: none; border-color: #f39c12; }
-    input:disabled { opacity: 0.6; cursor: not-allowed; }
+    input:disabled { opacity: 0.7; cursor: not-allowed; }
     .btn {
       width: 100%;
-      padding: 14px;
+      padding: 12px;
       border: none;
-      border-radius: 10px;
+      border-radius: 6px;
       font-weight: bold;
       font-size: 15px;
       cursor: pointer;
       margin-top: 10px;
-      transition: all 0.2s;
-      touch-action: manipulation;
+      transition: background 0.2s;
     }
-    .btn:active { transform: scale(0.98); }
     .btn-primary { background-color: #f39c12; color: #121212; }
-    .btn-primary:hover { background-color: #e67e22; }
     .btn-secondary { background-color: #3498db; color: #fff; }
-    .btn-secondary:hover { background-color: #2980b9; }
     .btn-admin { background-color: #e74c3c; color: #fff; }
-    .btn-admin:hover { background-color: #c0392b; }
     .admin-panel {
       margin-top: 25px;
       padding-top: 20px;
       border-top: 1px solid #333;
     }
-    /* Modal mejorado */
+    /* Estilos del Modal */
     .modal {
       display: none;
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.92);
+      background: rgba(0,0,0,0.85);
       justify-content: center;
       align-items: center;
       z-index: 1000;
-      padding: 10px;
     }
     .modal-content {
-      background: #1e1e1e;
-      width: 100%;
-      max-width: 600px;
-      max-height: 95vh;
+      background: #2a2a2a;
+      width: 90%;
+      max-width: 500px;
       padding: 20px;
-      border-radius: 16px;
+      border-radius: 10px;
       position: relative;
-      display: flex;
-      flex-direction: column;
     }
     .close-btn {
       position: absolute;
-      top: 12px; right: 12px;
+      top: 10px; right: 15px;
       background: #e74c3c; color: white;
-      border: none; padding: 8px 14px;
-      border-radius: 8px; cursor: pointer;
-      font-weight: bold;
-      z-index: 10;
+      border: none; padding: 5px 10px;
+      border-radius: 4px; cursor: pointer;
     }
     .viewer-container {
-      margin-top: 10px;
+      margin-top: 15px;
       width: 100%;
-      flex: 1;
-      min-height: 300px;
+      min-height: 380px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0a0a0a;
-      border-radius: 12px;
-      overflow: hidden;
-      position: relative;
-    }
-    #statusMsg { 
-      font-family: monospace; 
-      font-size: 13px; 
-      text-align: center; 
-      margin-top: 15px; 
-      min-height: 20px;
-      color: #888;
-    }
-    .spinner {
-      width: 40px; height: 40px;
-      border: 3px solid #333;
-      border-top-color: #f39c12;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .file-name {
-      font-size: 12px;
-      color: #888;
-      margin-top: 5px;
-    }
-    /* PDF.js canvas */
-    #pdfCanvas {
-      max-width: 100%;
-      height: auto;
-      display: block;
-    }
-    .pdf-nav {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 15px;
-      padding: 10px;
-      background: #2a2a2a;
+      background: #121212;
       border-radius: 8px;
-      margin-top: 10px;
+      overflow: hidden;
     }
-    .pdf-nav button {
-      background: #f39c12;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      color: #121212;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .pdf-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
-    .pdf-nav span { font-size: 13px; color: #aaa; }
+    #statusMsg { font-family: monospace; font-size: 13px; text-align: center; margin-top: 15px; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>🔑 Llavero NFC</h2>
+  <h2>Llavero NFC</h2>
   
   <div style="text-align: center;">
     <span id="estadoBadge" class="badge badge-disponible">Cargando...</span>
@@ -194,10 +131,12 @@
     <input type="tel" id="txtTelefono" disabled placeholder="Sin registrar">
   </div>
 
-  <button id="btnVerTarjeta" class="btn btn-secondary" style="display: none;">📄 Ver Tarjeta de Circulación</button>
+  <!-- Botón de consulta pública -->
+  <button id="btnVerTarjeta" class="btn btn-secondary" style="display: none;">Ver Tarjeta de Circulación</button>
 
+  <!-- Panel de Edición/Administración -->
   <div class="admin-panel">
-    <h3>⚙️ Gestión Administrativa</h3>
+    <h3>Gestión Administrativa</h3>
     <button id="btnLogin" class="btn btn-admin">Iniciar Sesión con Google</button>
 
     <form id="adminForm" style="display: none; margin-top: 15px;">
@@ -211,38 +150,23 @@
       </div>
       <div class="field-group">
         <label for="fileInput">Subir/Cambiar Tarjeta (Imagen o PDF):</label>
-        <input type="file" id="fileInput" accept="image/*,application/pdf" style="margin-top: 5px; color: #aaa;">
-        <div id="fileName" class="file-name"></div>
+        <input type="file" id="fileInput" accept="image/*,application/pdf" style="margin-top: 5px;">
       </div>
-      <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
+      <button type="submit" class="btn btn-primary">Guardar Cambios</button>
     </form>
   </div>
 
   <p id="statusMsg"></p>
 </div>
 
-<!-- Modal -->
+<!-- Modal para Visualización de Tarjeta de Circulación -->
 <div id="modalTarjeta" class="modal">
   <div class="modal-content">
-    <button class="close-btn" id="btnCerrarModal">✕ Cerrar</button>
-    <h3>📄 Tarjeta de Circulación</h3>
-    <div id="contenedorTarjeta" class="viewer-container">
-      <div class="spinner"></div>
-    </div>
-    <div id="pdfControls" class="pdf-nav" style="display: none;">
-      <button id="btnPrev">◀ Anterior</button>
-      <span id="pageInfo">Página 1 de 1</span>
-      <button id="btnNext">Siguiente ▶</button>
-    </div>
+    <button class="close-btn" id="btnCerrarModal">X Cerrar</button>
+    <h3>Tarjeta de Circulación</h3>
+    <div id="contenedorTarjeta" class="viewer-container"></div>
   </div>
 </div>
-
-<!-- PDF.js desde CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-  // Configurar worker de PDF.js
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-</script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -250,6 +174,7 @@
   import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
+  // Configuración de tu proyecto en Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyC7L72sP3vg9_OooIZhcU8Ry0rgqFVz7tQ",
     authDomain: "llaveros-nfc-5ebe2.firebaseapp.com",
@@ -266,42 +191,39 @@
 
   let tarjetaUrlGlobal = null;
   let tipoDocumentoGlobal = null;
-  let pdfDoc = null;
-  let currentPage = 1;
-  let totalPages = 0;
 
+  // Extraer el ID desde los parámetros de la URL (ej: ?id=K9x2M8pL)
   const urlParams = new URLSearchParams(window.location.search);
-  const llaveroId = urlParams.get('id') || "K9x2M8pL";
+  const llaveroId = urlParams.get('id') || "K9x2M8pL"; // 'K9x2M8pL' como ID fallback
 
   const statusMsg = document.getElementById('statusMsg');
-  const contenedor = document.getElementById('contenedorTarjeta');
-  const pdfControls = document.getElementById('pdfControls');
 
-  // ========== CARGAR DATOS ==========
+  // 1. CARGAR DATOS DEL LLAVERO (Público)
   async function cargarLlavero() {
     try {
-      statusMsg.innerText = "Cargando datos...";
       const docSnap = await getDoc(doc(db, "llaveros", llaveroId));
-      
       if (docSnap.exists()) {
         const data = docSnap.data();
         document.getElementById('txtCodigo').value = data.codigo || llaveroId;
         document.getElementById('txtPropietario').value = data.propietario || "No asignado";
         document.getElementById('txtTelefono').value = data.telefonoContacto || "No registrado";
         
+        // Asignación de Badge
         const estadoBadge = document.getElementById('estadoBadge');
-        estadoBadge.innerText = data.estado === 'asignado' ? 'ASIGNADO' : 'DISPONIBLE';
+        estadoBadge.innerText = data.estado || "disponible";
         estadoBadge.className = `badge badge-${data.estado === 'asignado' ? 'asignado' : 'disponible'}`;
 
+        // Datos para el visor de tarjeta
         tarjetaUrlGlobal = data.tarjetaCirculacionUrl || null;
         tipoDocumentoGlobal = data.tipoDocumento || null;
 
-        document.getElementById('btnVerTarjeta').style.display = tarjetaUrlGlobal ? 'block' : 'none';
+        if (tarjetaUrlGlobal) {
+          document.getElementById('btnVerTarjeta').style.display = 'block';
+        }
 
+        // Rellenar formulario de administración
         document.getElementById('editPropietario').value = data.propietario || "";
         document.getElementById('editTelefono').value = data.telefonoContacto || "";
-        
-        statusMsg.innerText = "";
       } else {
         statusMsg.innerText = "❌ El llavero escaneado no existe.";
       }
@@ -311,130 +233,46 @@
     }
   }
 
-  // ========== VISUALIZADOR HÍBRIDO ==========
-  async function renderizarDocumento(url, tipoMime) {
-    contenedor.innerHTML = '<div class="spinner"></div>';
-    pdfControls.style.display = 'none';
-    
+  // 2. VISUALIZADOR HÍBRIDO (Imagen o PDF)
+  function renderizarDocumento(url, tipoMime) {
+    const contenedor = document.getElementById('contenedorTarjeta');
     if (!url) {
       contenedor.innerHTML = '<p style="color:#888;">No hay tarjeta cargada.</p>';
       return;
     }
 
+    const urlLimpia = url.toLowerCase();
     const esImagen = (tipoMime && tipoMime.startsWith('image/')) || 
-                     /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(url);
+                     urlLimpia.includes('.png') || 
+                     urlLimpia.includes('.jpg') || 
+                     urlLimpia.includes('.jpeg') || 
+                     urlLimpia.includes('.webp');
 
     if (esImagen) {
-      // Renderizar imagen
-      contenedor.innerHTML = `<img src="${url}" alt="Tarjeta" style="width: 100%; height: auto; max-height: 75vh; object-fit: contain;" onerror="this.parentElement.innerHTML='<p style=\\'color:#e74c3c;\\'>Error al cargar imagen</p>'">`;
-    } else {
-      // Renderizar PDF con PDF.js
-      await renderizarPDF(url);
-    }
-  }
-
-  async function renderizarPDF(url) {
-    try {
-      contenedor.innerHTML = '<div class="spinner"></div><p style="color:#888; margin-top:10px;">Cargando PDF...</p>';
-      
-      const loadingTask = pdfjsLib.getDocument({
-        url: url,
-        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-        cMapPacked: true,
-      });
-      
-      pdfDoc = await loadingTask.promise;
-      totalPages = pdfDoc.numPages;
-      currentPage = 1;
-
-      if (totalPages > 1) {
-        pdfControls.style.display = 'flex';
-        actualizarInfoPagina();
-      }
-
-      await renderizarPagina(currentPage);
-    } catch (err) {
-      console.error("Error PDF:", err);
-      // Fallback: iframe nativo del navegador (último recurso)
       contenedor.innerHTML = `
-        <iframe src="${url}" 
-                style="width: 100%; height: 70vh; border: none;" 
-                type="application/pdf">
+        <img src="${url}" alt="Tarjeta de Circulación" style="width: 100%; height: auto; max-height: 70vh; object-fit: contain;">
+      `;
+    } else {
+      // Motor embebido para renderizado directo en móviles sin forzar descarga
+      contenedor.innerHTML = `
+        <iframe src="https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true" 
+                style="width: 100%; height: 60vh; border: none;" allowfullscreen>
         </iframe>
-        <p style="color:#888; font-size:12px; margin-top:8px;">Si no ves el PDF, <a href="${url}" target="_blank" style="color:#f39c12;">ábrelo aquí</a></p>
       `;
     }
   }
 
-  async function renderizarPagina(num) {
-    contenedor.innerHTML = '<div class="spinner"></div>';
-    
-    const page = await pdfDoc.getPage(num);
-    
-    // Calcular escala para que quepa en pantalla de celular
-    const containerWidth = contenedor.clientWidth - 20;
-    const viewport = page.getViewport({ scale: 1 });
-    const scale = Math.min(containerWidth / viewport.width, 2.5); // Máx 2.5x para no pixelar
-    const scaledViewport = page.getViewport({ scale });
-
-    const canvas = document.createElement('canvas');
-    canvas.id = 'pdfCanvas';
-    const context = canvas.getContext('2d');
-    canvas.width = scaledViewport.width;
-    canvas.height = scaledViewport.height;
-
-    contenedor.innerHTML = '';
-    contenedor.appendChild(canvas);
-
-    await page.render({
-      canvasContext: context,
-      viewport: scaledViewport
-    }).promise;
-  }
-
-  function actualizarInfoPagina() {
-    document.getElementById('pageInfo').innerText = `Página ${currentPage} de ${totalPages}`;
-    document.getElementById('btnPrev').disabled = currentPage <= 1;
-    document.getElementById('btnNext').disabled = currentPage >= totalPages;
-  }
-
-  document.getElementById('btnPrev').addEventListener('click', async () => {
-    if (currentPage > 1) {
-      currentPage--;
-      await renderizarPagina(currentPage);
-      actualizarInfoPagina();
-    }
-  });
-
-  document.getElementById('btnNext').addEventListener('click', async () => {
-    if (currentPage < totalPages) {
-      currentPage++;
-      await renderizarPagina(currentPage);
-      actualizarInfoPagina();
-    }
-  });
-
-  // ========== EVENTOS MODAL ==========
+  // Eventos del Modal
   document.getElementById('btnVerTarjeta').addEventListener('click', () => {
-    document.getElementById('modalTarjeta').style.display = 'flex';
     renderizarDocumento(tarjetaUrlGlobal, tipoDocumentoGlobal);
+    document.getElementById('modalTarjeta').style.display = 'flex';
   });
 
-  function cerrarModal() {
+  document.getElementById('btnCerrarModal').addEventListener('click', () => {
     document.getElementById('modalTarjeta').style.display = 'none';
-    contenedor.innerHTML = '';
-    pdfControls.style.display = 'none';
-    pdfDoc = null;
-  }
-
-  document.getElementById('btnCerrarModal').addEventListener('click', cerrarModal);
-  
-  // Cerrar al tocar fuera del modal
-  document.getElementById('modalTarjeta').addEventListener('click', (e) => {
-    if (e.target.id === 'modalTarjeta') cerrarModal();
   });
 
-  // ========== AUTENTICACIÓN ==========
+  // 3. AUTENTICACIÓN CON GOOGLE
   document.getElementById('btnLogin').addEventListener('click', () => {
     const provider = new GoogleAuthProvider();
     signInWithPopup(auth, provider).catch(err => {
@@ -446,49 +284,32 @@
     if (user) {
       document.getElementById('btnLogin').style.display = 'none';
       document.getElementById('adminForm').style.display = 'block';
-      statusMsg.innerText = "✅ Sesión activa: " + user.email;
+      statusMsg.innerText = "Sesión activa: " + user.email;
     } else {
       document.getElementById('btnLogin').style.display = 'block';
       document.getElementById('adminForm').style.display = 'none';
     }
   });
 
-  // ========== MOSTRAR NOMBRE DE ARCHIVO ==========
-  document.getElementById('fileInput').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    document.getElementById('fileName').innerText = file ? `📎 ${file.name}` : '';
-  });
-
-  // ========== GUARDAR ==========
+  // 4. GUARDAR / EDITAR REGISTRO (Solo Autenticados)
   document.getElementById('adminForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    statusMsg.innerText = "⏳ Guardando cambios...";
+    statusMsg.innerText = "Guardando cambios...";
 
-    const propietario = document.getElementById('editPropietario').value.trim();
-    const telefono = document.getElementById('editTelefono').value.trim();
+    const propietario = document.getElementById('editPropietario').value;
+    const telefono = document.getElementById('editTelefono').value;
     const fileInput = document.getElementById('fileInput');
-
-    if (!propietario || !telefono) {
-      statusMsg.innerText = "❌ Completa todos los campos.";
-      return;
-    }
 
     try {
       let finalUrl = tarjetaUrlGlobal;
       let finalTipo = tipoDocumentoGlobal;
 
+      // Si subió un nuevo archivo, procesarlo en Firebase Storage
       if (fileInput.files[0]) {
         const file = fileInput.files[0];
+        const storageRef = ref(storage, `llaveros/${llaveroId}_tarjeta`);
         
-        // Validar tamaño (máx 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          statusMsg.innerText = "❌ El archivo debe ser menor a 5MB.";
-          return;
-        }
-
-        const extension = file.name.split('.').pop().toLowerCase();
-        const storageRef = ref(storage, `llaveros/${llaveroId}_tarjeta.${extension}`);
-        
+        // Metadatos para forzar apertura inline
         const metadata = {
           contentType: file.type,
           contentDisposition: 'inline'
@@ -499,6 +320,7 @@
         finalTipo = file.type;
       }
 
+      // Actualizar datos en Firestore
       await setDoc(doc(db, "llaveros", llaveroId), {
         codigo: llaveroId,
         propietario: propietario,
@@ -510,16 +332,14 @@
       }, { merge: true });
 
       statusMsg.innerText = "✅ Guardado correctamente.";
-      document.getElementById('fileName').innerText = '';
-      fileInput.value = '';
-      cargarLlavero();
+      cargarLlavero(); // Recargar datos
     } catch (err) {
       console.error(err);
       statusMsg.innerText = "❌ Error al guardar: " + err.message;
     }
   });
 
-  // Inicializar
+  // Inicializar lectura
   cargarLlavero();
 </script>
 
