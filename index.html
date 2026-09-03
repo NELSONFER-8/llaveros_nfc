@@ -1,347 +1,576 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consulta de Llavero NFC</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121212;
-      color: #e0e0e0;
-      margin: 0;
-      padding: 15px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    .card {
-      background-color: #1e1e1e;
-      border-radius: 12px;
-      padding: 24px;
-      width: 100%;
-      max-width: 480px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    }
-    h2, h3 { text-align: center; color: #ffffff; margin-top: 0; }
-    .badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: bold;
-      text-transform: uppercase;
-      margin-bottom: 15px;
-    }
-    .badge-disponible { background-color: #27ae60; color: #fff; }
-    .badge-asignado { background-color: #2980b9; color: #fff; }
-    .field-group { margin-bottom: 15px; }
-    label { display: block; font-size: 13px; color: #aaa; margin-bottom: 5px; }
-    input[type="text"], input[type="tel"] {
-      width: 100%;
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #333;
-      background-color: #2a2a2a;
-      color: #fff;
-      font-size: 15px;
-    }
-    input:disabled { opacity: 0.7; cursor: not-allowed; }
-    .btn {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 15px;
-      cursor: pointer;
-      margin-top: 10px;
-      transition: background 0.2s;
-    }
-    .btn-primary { background-color: #f39c12; color: #121212; }
-    .btn-secondary { background-color: #3498db; color: #fff; }
-    .btn-admin { background-color: #e74c3c; color: #fff; }
-    .admin-panel {
-      margin-top: 25px;
-      padding-top: 20px;
-      border-top: 1px solid #333;
-    }
-    /* Estilos del Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85);
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .modal-content {
-      background: #2a2a2a;
-      width: 90%;
-      max-width: 500px;
-      padding: 20px;
-      border-radius: 10px;
-      position: relative;
-    }
-    .close-btn {
-      position: absolute;
-      top: 10px; right: 15px;
-      background: #e74c3c; color: white;
-      border: none; padding: 5px 10px;
-      border-radius: 4px; cursor: pointer;
-    }
-    .viewer-container {
-      margin-top: 15px;
-      width: 100%;
-      min-height: 380px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #121212;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    #statusMsg { font-family: monospace; font-size: 13px; text-align: center; margin-top: 15px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>MotoDocs - Llavero digital</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fuente: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            margin: 0;
+            background: #1a1a1a;
+            background-image: 
+                radial-gradient(ellipse at 30% 20%, rgba(212, 175, 55, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 80%, rgba(139, 115, 85, 0.04) 0%, transparent 50%),
+                linear-gradient(180deg, #1a1a1a 0%, #222222 100%);
+            background-attachment: fixed;
+        }
+
+        .main-card {
+            background: rgba(45, 45, 45, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 32px;
+            padding: 32px 28px;
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid rgba(212, 175, 55, 0.12);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.7),
+                0 0 40px rgba(212, 175, 55, 0.02),
+                inset 0 1px 0 rgba(212, 175, 55, 0.05);
+            transition: all 0.3s ease;
+            animation: floatIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        @keyframes floatIn {
+            0% { opacity: 0; transform: translateY(24px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .title { font-family: 'Inter', sans-serif; font-weight: 900; color: #f5f5f5; letter-spacing: -0.5px; }
+        .subtitle { font-family: 'Inter', sans-serif; font-weight: 400; color: #b3b3b3; font-size: 0.95rem; }
+        .text-soft { color: #e0e0e0; }
+        .text-muted { color: #8a8a8a; }
+        .text-gold { color: #d4af37; }
+
+        .btn-elegant {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 24px;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            width: 100%;
+            text-decoration: none;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-elegant:active { transform: scale(0.96); }
+        .btn-elegant:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-gold {
+            background: linear-gradient(135deg, #d4af37 0%, #b8952e 100%);
+            color: #1a1a1a;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.25);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        .btn-gold:hover:not(:disabled) {
+            background: linear-gradient(135deg, #e0be4a 0%, #c99f32 100%);
+            box-shadow: 0 6px 30px rgba(212, 175, 55, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-google {
+            background: #ffffff;
+            color: #333333;
+            border: 1px solid #dddddd;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .btn-google:hover:not(:disabled) {
+            background: #f8f8f8;
+            transform: translateY(-2px);
+        }
+
+        .btn-bronze {
+            background: transparent;
+            color: #d4af37;
+            border: 1px solid rgba(212, 175, 55, 0.25);
+        }
+        .btn-bronze:hover:not(:disabled) {
+            background: rgba(212, 175, 55, 0.06);
+            border-color: rgba(212, 175, 55, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-dark-outline {
+            background: transparent;
+            color: #b3b3b3;
+            border: 1px solid #404040;
+        }
+        .btn-dark-outline:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: #8b7355;
+            color: #f5f5f5;
+            transform: translateY(-2px);
+        }
+
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+            color: #f5f5f5;
+            border: 1px solid rgba(46, 125, 50, 0.3);
+        }
+
+        .input-elegant {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 60px;
+            border: 1px solid #404040;
+            background: #222222;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            color: #f5f5f5;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+        .input-elegant:focus {
+            border-color: #d4af37;
+            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+            background: #2a2a2a;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #2d2d2d;
+            max-width: 400px;
+            width: 100%;
+            padding: 32px 28px;
+            border-radius: 32px;
+            text-align: center;
+            border: 1px solid rgba(212, 175, 55, 0.12);
+        }
+
+        .document-viewer {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            padding: 16px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .document-viewer.active { display: flex; }
+        .document-viewer .viewer-header {
+            width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; color: #f5f5f5;
+        }
+        .document-viewer .viewer-body {
+            width: 100%; max-width: 1200px; flex: 1; background: #1a1a1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(212, 175, 55, 0.08);
+        }
+
+        .loading-spinner {
+            display: inline-block; width: 36px; height: 36px; border: 4px solid rgba(212, 175, 55, 0.15); border-top-color: #d4af37; border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .badge-gold {
+            background: rgba(212, 175, 55, 0.1); color: #d4af37; padding: 6px 16px; border-radius: 60px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; border: 1px solid rgba(212, 175, 55, 0.12); display: inline-block;
+        }
+        .divider-gold { width: 60px; height: 2px; background: linear-gradient(90deg, #d4af37, #8b7355); border-radius: 4px; margin: 16px auto; }
+        .fade-up { animation: fadeUp 0.5s ease forwards; opacity: 0; }
+        @keyframes fadeUp { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
 <body>
 
-<div class="card">
-  <h2>Llavero NFC</h2>
-  
-  <div style="text-align: center;">
-    <span id="estadoBadge" class="badge badge-disponible">Cargando...</span>
-  </div>
+    <!-- MODAL GENERAL -->
+    <div id="customModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="text-4xl mb-3" id="modalIcon">✦</div>
+            <div class="text-xl font-bold text-white mb-2" id="modalTitle">Aviso</div>
+            <div class="text-sm text-gray-300 mb-6" id="modalMessage">Mensaje informativo</div>
+            <button class="btn-elegant btn-gold" id="modalBtn">Entendido</button>
+        </div>
+    </div>
 
-  <div class="field-group">
-    <label>Código Único:</label>
-    <input type="text" id="txtCodigo" disabled value="-------">
-  </div>
+    <!-- MODAL DE AUTENTICACIÓN GOOGLE -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="modal-box text-center">
+            <span class="badge-gold mb-2">🔒 Propietario</span>
+            <h3 class="text-xl font-bold text-white mt-2">Iniciar Sesión</h3>
+            <p class="text-xs text-gray-400 mt-1 mb-6">Autentícate con la cuenta de Google vinculada a este llavero para modificar datos.</p>
+            
+            <button id="btnGoogleLogin" class="btn-elegant btn-google mb-3">
+                <svg class="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                Continuar con Google
+            </button>
+            <button id="btnLoginCancel" class="btn-elegant btn-dark-outline">Cancelar</button>
+        </div>
+    </div>
 
-  <div class="field-group">
-    <label>Propietario:</label>
-    <input type="text" id="txtPropietario" disabled placeholder="Sin asignar">
-  </div>
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div id="app" class="main-card">
+        <div class="text-center py-8 fade-up">
+            <div class="loading-spinner mx-auto"></div>
+            <p class="subtitle mt-4" style="color:#6a6a6a;">Cargando información...</p>
+        </div>
+    </div>
 
-  <div class="field-group">
-    <label>Teléfono de Contacto:</label>
-    <input type="tel" id="txtTelefono" disabled placeholder="Sin registrar">
-  </div>
+    <!-- VISOR DE DOCUMENTOS -->
+    <div id="documentViewer" class="document-viewer">
+        <div class="viewer-header">
+            <span class="font-semibold text-lg" id="viewerTitle">Documento</span>
+            <button class="px-4 py-2 bg-white/10 hover:bg-white/20 text-gray-300 rounded-full text-sm" id="btnCloseViewer">✕ Cerrar</button>
+        </div>
+        <div class="viewer-body" id="viewerBody"></div>
+    </div>
 
-  <!-- Botón de consulta pública -->
-  <button id="btnVerTarjeta" class="btn btn-secondary" style="display: none;">Ver Tarjeta de Circulación</button>
+    <!-- SCRIPT FIREBASE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-  <!-- Panel de Edición/Administración -->
-  <div class="admin-panel">
-    <h3>Gestión Administrativa</h3>
-    <button id="btnLogin" class="btn btn-admin">Iniciar Sesión con Google</button>
-
-    <form id="adminForm" style="display: none; margin-top: 15px;">
-      <div class="field-group">
-        <label for="editPropietario">Editar Propietario:</label>
-        <input type="text" id="editPropietario" required>
-      </div>
-      <div class="field-group">
-        <label for="editTelefono">Editar Teléfono:</label>
-        <input type="tel" id="editTelefono" required>
-      </div>
-      <div class="field-group">
-        <label for="fileInput">Subir/Cambiar Tarjeta (Imagen o PDF):</label>
-        <input type="file" id="fileInput" accept="image/*,application/pdf" style="margin-top: 5px;">
-      </div>
-      <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-    </form>
-  </div>
-
-  <p id="statusMsg"></p>
-</div>
-
-<!-- Modal para Visualización de Tarjeta de Circulación -->
-<div id="modalTarjeta" class="modal">
-  <div class="modal-content">
-    <button class="close-btn" id="btnCerrarModal">X Cerrar</button>
-    <h3>Tarjeta de Circulación</h3>
-    <div id="contenedorTarjeta" class="viewer-container"></div>
-  </div>
-</div>
-
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-
-  // Configuración de tu proyecto en Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyC7L72sP3vg9_OooIZhcU8Ry0rgqFVz7tQ",
-    authDomain: "llaveros-nfc-5ebe2.firebaseapp.com",
-    projectId: "llaveros-nfc-5ebe2",
-    storageBucket: "llaveros-nfc-5ebe2.firebasestorage.app",
-    messagingSenderId: "752383020507",
-    appId: "1:752383020507:web:63015585ab4bfc5b3debfe"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-  const storage = getStorage(app);
-
-  let tarjetaUrlGlobal = null;
-  let tipoDocumentoGlobal = null;
-
-  // Extraer el ID desde los parámetros de la URL (ej: ?id=K9x2M8pL)
-  const urlParams = new URLSearchParams(window.location.search);
-  const llaveroId = urlParams.get('id') || "K9x2M8pL"; // 'K9x2M8pL' como ID fallback
-
-  const statusMsg = document.getElementById('statusMsg');
-
-  // 1. CARGAR DATOS DEL LLAVERO (Público)
-  async function cargarLlavero() {
-    try {
-      const docSnap = await getDoc(doc(db, "llaveros", llaveroId));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        document.getElementById('txtCodigo').value = data.codigo || llaveroId;
-        document.getElementById('txtPropietario').value = data.propietario || "No asignado";
-        document.getElementById('txtTelefono').value = data.telefonoContacto || "No registrado";
-        
-        // Asignación de Badge
-        const estadoBadge = document.getElementById('estadoBadge');
-        estadoBadge.innerText = data.estado || "disponible";
-        estadoBadge.className = `badge badge-${data.estado === 'asignado' ? 'asignado' : 'disponible'}`;
-
-        // Datos para el visor de tarjeta
-        tarjetaUrlGlobal = data.tarjetaCirculacionUrl || null;
-        tipoDocumentoGlobal = data.tipoDocumento || null;
-
-        if (tarjetaUrlGlobal) {
-          document.getElementById('btnVerTarjeta').style.display = 'block';
-        }
-
-        // Rellenar formulario de administración
-        document.getElementById('editPropietario').value = data.propietario || "";
-        document.getElementById('editTelefono').value = data.telefonoContacto || "";
-      } else {
-        statusMsg.innerText = "❌ El llavero escaneado no existe.";
-      }
-    } catch (err) {
-      console.error(err);
-      statusMsg.innerText = "Error al leer datos: " + err.message;
-    }
-  }
-
-  // 2. VISUALIZADOR HÍBRIDO (Imagen o PDF)
-  function renderizarDocumento(url, tipoMime) {
-    const contenedor = document.getElementById('contenedorTarjeta');
-    if (!url) {
-      contenedor.innerHTML = '<p style="color:#888;">No hay tarjeta cargada.</p>';
-      return;
-    }
-
-    const urlLimpia = url.toLowerCase();
-    const esImagen = (tipoMime && tipoMime.startsWith('image/')) || 
-                     urlLimpia.includes('.png') || 
-                     urlLimpia.includes('.jpg') || 
-                     urlLimpia.includes('.jpeg') || 
-                     urlLimpia.includes('.webp');
-
-    if (esImagen) {
-      contenedor.innerHTML = `
-        <img src="${url}" alt="Tarjeta de Circulación" style="width: 100%; height: auto; max-height: 70vh; object-fit: contain;">
-      `;
-    } else {
-      // Motor embebido para renderizado directo en móviles sin forzar descarga
-      contenedor.innerHTML = `
-        <iframe src="https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true" 
-                style="width: 100%; height: 60vh; border: none;" allowfullscreen>
-        </iframe>
-      `;
-    }
-  }
-
-  // Eventos del Modal
-  document.getElementById('btnVerTarjeta').addEventListener('click', () => {
-    renderizarDocumento(tarjetaUrlGlobal, tipoDocumentoGlobal);
-    document.getElementById('modalTarjeta').style.display = 'flex';
-  });
-
-  document.getElementById('btnCerrarModal').addEventListener('click', () => {
-    document.getElementById('modalTarjeta').style.display = 'none';
-  });
-
-  // 3. AUTENTICACIÓN CON GOOGLE
-  document.getElementById('btnLogin').addEventListener('click', () => {
-    const provider = new GoogleAuthProvider();
-    signInWithPopup(auth, provider).catch(err => {
-      statusMsg.innerText = "Error de autenticación: " + err.message;
-    });
-  });
-
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      document.getElementById('btnLogin').style.display = 'none';
-      document.getElementById('adminForm').style.display = 'block';
-      statusMsg.innerText = "Sesión activa: " + user.email;
-    } else {
-      document.getElementById('btnLogin').style.display = 'block';
-      document.getElementById('adminForm').style.display = 'none';
-    }
-  });
-
-  // 4. GUARDAR / EDITAR REGISTRO (Solo Autenticados)
-  document.getElementById('adminForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    statusMsg.innerText = "Guardando cambios...";
-
-    const propietario = document.getElementById('editPropietario').value;
-    const telefono = document.getElementById('editTelefono').value;
-    const fileInput = document.getElementById('fileInput');
-
-    try {
-      let finalUrl = tarjetaUrlGlobal;
-      let finalTipo = tipoDocumentoGlobal;
-
-      // Si subió un nuevo archivo, procesarlo en Firebase Storage
-      if (fileInput.files[0]) {
-        const file = fileInput.files[0];
-        const storageRef = ref(storage, `llaveros/${llaveroId}_tarjeta`);
-        
-        // Metadatos para forzar apertura inline
-        const metadata = {
-          contentType: file.type,
-          contentDisposition: 'inline'
+        const firebaseConfig = {
+            apiKey: "AIzaSyC7L72sP3vg9_OoolZhcU8Ry0rgqFVz7tQ",
+            authDomain: "llaveros-nfc-5ebe2.firebaseapp.com",
+            projectId: "llaveros-nfc-5ebe2",
+            messagingSenderId: "752383020507",
+            appId: "1:752383020507:web:63015585ab4bfc5b3debfe"
         };
 
-        await uploadBytes(storageRef, file, metadata);
-        finalUrl = await getDownloadURL(storageRef);
-        finalTipo = file.type;
-      }
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
 
-      // Actualizar datos en Firestore
-      await setDoc(doc(db, "llaveros", llaveroId), {
-        codigo: llaveroId,
-        propietario: propietario,
-        telefonoContacto: telefono,
-        estado: "asignado",
-        tarjetaCirculacionUrl: finalUrl,
-        tipoDocumento: finalTipo,
-        fechaActualizacion: new Date().toISOString()
-      }, { merge: true });
+        const VENDEDOR = {
+            nombre: "NELSON_FER",
+            whatsapp: "50251745228",
+            mensajeWhatsApp: "Hola, necesito ayuda con mi llavero NFC"
+        };
 
-      statusMsg.innerText = "✅ Guardado correctamente.";
-      cargarLlavero(); // Recargar datos
-    } catch (err) {
-      console.error(err);
-      statusMsg.innerText = "❌ Error al guardar: " + err.message;
-    }
-  });
+        const urlParams = new URLSearchParams(window.location.search);
+        const codigoLlavero = urlParams.get('c');
 
-  // Inicializar lectura
-  cargarLlavero();
-</script>
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) return resolve(null);
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
 
+        function mostrarModal(icono, titulo, mensaje) {
+            const overlay = document.getElementById('customModal');
+            document.getElementById('modalIcon').textContent = icono || '✦';
+            document.getElementById('modalTitle').textContent = titulo || 'Aviso';
+            document.getElementById('modalMessage').textContent = mensaje || '';
+            overlay.classList.add('active');
+            document.getElementById('modalBtn').onclick = () => overlay.classList.remove('active');
+        }
+
+        const FIRMA_HTML = `
+            <div class="mt-6 pt-4 text-center border-t border-[#404040]">
+                <p class="text-xs text-muted">Desarrollado por <span class="font-semibold text-gold">${VENDEDOR.nombre}</span></p>
+            </div>
+        `;
+
+        function crearBotonWhatsApp(texto = "📱 Contactar al vendedor") {
+            const url = `https://wa.me/${VENDEDOR.whatsapp}?text=${encodeURIComponent(VENDEDOR.mensajeWhatsApp)}`;
+            return `
+                <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn-elegant btn-whatsapp">
+                    ${texto}
+                </a>
+            `;
+        }
+
+        function abrirVisor(dataUrl, titulo) {
+            const viewer = document.getElementById('documentViewer');
+            const body = document.getElementById('viewerBody');
+            document.getElementById('viewerTitle').textContent = titulo || 'Documento';
+
+            if (!dataUrl) {
+                mostrarModal('📄', 'No disponible', 'No se encontró el documento guardado.');
+                return;
+            }
+
+            viewer.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            if (dataUrl.startsWith('data:image/')) {
+                body.innerHTML = `<div class="flex items-center justify-center h-full p-3"><img src="${dataUrl}" class="max-w-full max-h-full object-contain rounded-lg"></div>`;
+            } else if (dataUrl.startsWith('data:application/pdf')) {
+                body.innerHTML = `<iframe src="${dataUrl}" class="w-full h-full border-none"></iframe>`;
+            } else {
+                body.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-center p-4"><a href="${dataUrl}" download="documento" class="btn-elegant btn-gold w-auto px-6">📥 Descargar Documento</a></div>`;
+            }
+        }
+
+        document.getElementById('btnCloseViewer').onclick = () => {
+            document.getElementById('documentViewer').classList.remove('active');
+            document.body.style.overflow = '';
+        };
+
+        async function obtenerLlavero(codigo) {
+            const docRef = doc(db, "llaveros", codigo);
+            const docSnap = await getDoc(docRef);
+            return docSnap.exists() ? docSnap.data() : null;
+        }
+
+        async function verDocumento(tipo) {
+            if (!codigoLlavero) return;
+            const llavero = await obtenerLlavero(codigoLlavero);
+            if (!llavero) return;
+            const dataUrl = tipo === 'tarjeta' ? llavero.url_tarjeta : llavero.url_calcomania;
+            const titulo = tipo === 'tarjeta' ? 'Tarjeta de Circulación' : 'Calcomanía Electrónica';
+            abrirVisor(dataUrl, titulo);
+        }
+
+        function abrirModalLogin(llavero) {
+            const modal = document.getElementById('loginModal');
+            modal.classList.add('active');
+            
+            document.getElementById('btnLoginCancel').onclick = () => modal.classList.remove('active');
+            
+            document.getElementById('btnGoogleLogin').onclick = async () => {
+                try {
+                    const result = await signInWithPopup(auth, googleProvider);
+                    const userEmail = result.user.email;
+
+                    // Si el llavero ya tiene un dueño asignado, verificamos que sea el mismo correo
+                    if (llavero.owner_email && llavero.owner_email !== userEmail) {
+                        modal.classList.remove('active');
+                        mostrarModal('⛔', 'Acceso Denegado', 'Esta cuenta de Google no coincide con la del propietario registrado.');
+                        return;
+                    }
+
+                    modal.classList.remove('active');
+                    mostrarFormularioRegistro(llavero, true, userEmail);
+                } catch (err) {
+                    mostrarModal('⚠️', 'Error de Autenticación', err.message);
+                }
+            };
+        }
+
+        function mostrarFormularioRegistro(llaveroExistente = null, esEdicion = false, loggedUserEmail = null) {
+            const app = document.getElementById('app');
+
+            app.innerHTML = `
+                <div class="fade-up">
+                    <div class="text-center mb-6">
+                        <span class="badge-gold">${esEdicion ? '✏️ Modo Edición' : '📝 Registro Inicial'}</span>
+                        <h2 class="title text-2xl mt-2">${esEdicion ? 'Actualizar Datos' : 'Configurar Llavero'}</h2>
+                        <p class="subtitle mt-1">Código: <span class="font-mono bg-[#222222] px-3 py-1 rounded-full text-sm text-gold" style="border:1px solid #404040;">${codigoLlavero}</span></p>
+                        <div class="divider-gold"></div>
+                    </div>
+
+                    <form id="registroForm" class="space-y-3 text-left">
+                        <div>
+                            <label class="block text-xs font-medium text-soft mb-1">Nombre Completo</label>
+                            <input type="text" id="nombre" value="${llaveroExistente?.nombre_propietario || ''}" required placeholder="Ej: Juan Pérez" class="input-elegant">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-soft mb-1">Placa de la Moto</label>
+                            <input type="text" id="placa" value="${llaveroExistente?.placa_moto || ''}" required placeholder="Ej: M123ABC" class="input-elegant uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-soft mb-1">Teléfono de Emergencia</label>
+                            <input type="tel" id="telefono" value="${llaveroExistente?.telefono_contacto || ''}" placeholder="Ej: 55551234" class="input-elegant">
+                        </div>
+
+                        ${!esEdicion ? `
+                            <div class="pt-2 border-t border-[#404040]">
+                                <p class="text-xs text-gold font-semibold mb-2">🔒 Propietario (Autenticación Google)</p>
+                                <button type="button" id="btnRegistrarGoogle" class="btn-elegant btn-google">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                                    </svg>
+                                    <span id="txtGoogleStatus">Vincular con Google</span>
+                                </button>
+                            </div>
+                        ` : ''}
+
+                        <div class="pt-2 border-t border-[#404040]">
+                            <label class="block text-xs font-medium text-soft mb-1">Tarjeta de Circulación (Imagen / PDF)</label>
+                            <input type="file" id="fileTarjeta" accept="image/*,application/pdf" ${esEdicion ? '' : 'required'} class="w-full text-xs text-muted file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#2a2a2a] file:text-gold cursor-pointer border border-[#404040] rounded-full">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-soft mb-1">Calcomanía Electrónica (Imagen / PDF)</label>
+                            <input type="file" id="fileCalcomania" accept="image/*,application/pdf" ${esEdicion ? '' : 'required'} class="w-full text-xs text-muted file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#2a2a2a] file:text-gold cursor-pointer border border-[#404040] rounded-full">
+                        </div>
+
+                        <button type="submit" id="btnGuardar" class="btn-elegant btn-gold mt-4">
+                            ${esEdicion ? 'Guardar Cambios' : 'Vincular y Guardar Llavero'}
+                        </button>
+                    </form>
+
+                    <div class="mt-4">${crearBotonWhatsApp("📱 ¿Dudas? Contáctame")}</div>
+                    ${FIRMA_HTML}
+                </div>
+            `;
+
+            let currentOwnerEmail = loggedUserEmail || llaveroExistente?.owner_email || null;
+
+            if (!esEdicion) {
+                document.getElementById('btnRegistrarGoogle').onclick = async () => {
+                    try {
+                        const res = await signInWithPopup(auth, googleProvider);
+                        currentOwnerEmail = res.user.email;
+                        document.getElementById('txtGoogleStatus').innerText = `✓ Vinculado: ${currentOwnerEmail}`;
+                    } catch (err) {
+                        mostrarModal('⚠️', 'Error', err.message);
+                    }
+                };
+            }
+
+            document.getElementById('registroForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                if (!currentOwnerEmail && !esEdicion) {
+                    mostrarModal('🔑', 'Cuenta requerida', 'Debes hacer clic en "Vincular con Google" antes de guardar.');
+                    return;
+                }
+
+                const btn = document.getElementById('btnGuardar');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading-spinner" style="width:20px;height:20px;border-width:2px;"></span> Guardando...';
+
+                try {
+                    const fileTarjeta = document.getElementById('fileTarjeta').files[0];
+                    const fileCalcomania = document.getElementById('fileCalcomania').files[0];
+
+                    let urlTarjeta = llaveroExistente?.url_tarjeta || null;
+                    let urlCalcomania = llaveroExistente?.url_calcomania || null;
+
+                    if (fileTarjeta) urlTarjeta = await fileToBase64(fileTarjeta);
+                    if (fileCalcomania) urlCalcomania = await fileToBase64(fileCalcomania);
+
+                    const docData = {
+                        codigo: codigoLlavero,
+                        nombre_propietario: document.getElementById('nombre').value,
+                        placa_moto: document.getElementById('placa').value.toUpperCase(),
+                        telefono_contacto: document.getElementById('telefono').value,
+                        owner_email: currentOwnerEmail,
+                        url_tarjeta: urlTarjeta,
+                        url_calcomania: urlCalcomania,
+                        estado: 'registrado',
+                        actualizado_en: new Date().toISOString()
+                    };
+
+                    await setDoc(doc(db, "llaveros", codigoLlavero), docData, { merge: true });
+
+                    mostrarModal('🎉', '¡Guardado!', 'Los datos y documentos se han guardado exitosamente.');
+                    setTimeout(() => location.reload(), 1500);
+
+                } catch (err) {
+                    mostrarModal('⚠️', 'Error al guardar', err.message);
+                    btn.disabled = false;
+                    btn.innerText = 'Reintentar';
+                }
+            });
+        }
+
+        function mostrarVistaPublica(data) {
+            const app = document.getElementById('app');
+
+            app.innerHTML = `
+                <div class="fade-up">
+                    <div class="text-center mb-5">
+                        <span class="badge-gold">🚗 Documentos Digitales</span>
+                        <h1 class="title text-4xl mt-2 tracking-tight text-gold">${data.placa_moto || 'MOTO'}</h1>
+                        <p class="subtitle mt-1">Propietario: <span class="font-semibold text-soft">${data.nombre_propietario}</span></p>
+                        <div class="divider-gold"></div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <button id="btnVerTarjeta" class="btn-elegant btn-gold justify-between">
+                            <span>📄 Tarjeta de Circulación</span>
+                            <span style="opacity:0.5;">→</span>
+                        </button>
+
+                        <button id="btnVerCalcomania" class="btn-elegant btn-bronze justify-between">
+                            <span>🏷️ Calcomanía Electrónica</span>
+                            <span style="opacity:0.5;">→</span>
+                        </button>
+                    </div>
+
+                    ${data.telefono_contacto ? `
+                        <div class="mt-5 pt-4 border-t border-[#404040] text-center">
+                            <p class="text-xs font-semibold text-muted uppercase tracking-wider mb-2">📞 Contacto de Emergencia</p>
+                            <a href="tel:${data.telefono_contacto}" class="inline-flex items-center gap-2 bg-[#222222] px-5 py-2.5 rounded-full text-sm font-semibold text-soft border border-[#404040]">
+                                <span>📱</span> ${data.telefono_contacto}
+                            </a>
+                        </div>
+                    ` : ''}
+
+                    <div class="mt-5 text-center">
+                        <button id="btnEditar" class="btn-elegant btn-dark-outline">
+                            🔒 Actualizar / Editar Documentos
+                        </button>
+                    </div>
+
+                    ${FIRMA_HTML}
+                </div>
+            `;
+
+            document.getElementById('btnVerTarjeta').onclick = () => verDocumento('tarjeta');
+            document.getElementById('btnVerCalcomania').onclick = () => verDocumento('calcomania');
+            document.getElementById('btnEditar').onclick = () => abrirModalLogin(data);
+        }
+
+        async function inicializarApp() {
+            if (!codigoLlavero) {
+                document.getElementById('app').innerHTML = `<div class="text-center py-6"><p class="subtitle">Falta el parámetro del llavero en la URL (?c=MOTO-001).</p></div>`;
+                return;
+            }
+
+            try {
+                const llavero = await obtenerLlavero(codigoLlavero);
+                if (!llavero) {
+                    document.getElementById('app').innerHTML = `<div class="text-center py-6"><p class="subtitle" style="color:#e74c3c;">Llavero no encontrado en la base de datos.</p></div>`;
+                    return;
+                }
+
+                if (llavero.estado === 'disponible') {
+                    mostrarFormularioRegistro(llavero, false);
+                } else if (llavero.estado === 'registrado') {
+                    mostrarVistaPublica(llavero);
+                }
+            } catch (err) {
+                mostrarModal('⚠️', 'Error de conexión', err.message);
+            }
+        }
+
+        inicializarApp();
+    </script>
 </body>
 </html>
