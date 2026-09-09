@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Fuente: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- MEJORA: PDF.js (visor de PDF en móviles) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -184,6 +186,7 @@
         }
         .document-viewer .viewer-body {
             width: 100%; max-width: 1200px; flex: 1; background: #1a1a1a; border-radius: 16px; overflow: hidden; border: 1px solid rgba(212, 175, 55, 0.08);
+            display: flex; align-items: center; justify-content: center;
         }
 
         .loading-spinner {
@@ -197,6 +200,21 @@
         .divider-gold { width: 60px; height: 2px; background: linear-gradient(90deg, #d4af37, #8b7355); border-radius: 4px; margin: 16px auto; }
         .fade-up { animation: fadeUp 0.5s ease forwards; opacity: 0; }
         @keyframes fadeUp { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: translateY(0); } }
+
+        /* MEJORA: Estilo para el canvas de PDF.js y el contenedor */
+        #pdfCanvasContainer {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+        #pdfCanvasContainer canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
     </style>
 </head>
 <body>
@@ -245,7 +263,12 @@
             <span class="font-semibold text-lg" id="viewerTitle">Documento</span>
             <button class="px-4 py-2 bg-white/10 hover:bg-white/20 text-gray-300 rounded-full text-sm" id="btnCloseViewer">✕ Cerrar</button>
         </div>
-        <div class="viewer-body" id="viewerBody"></div>
+        <div class="viewer-body" id="viewerBody">
+            <!-- MEJORA: Se usará un contenedor para el canvas o imagen -->
+            <div id="pdfCanvasContainer" class="flex items-center justify-center w-full h-full">
+                <div class="loading-spinner" id="pdfLoading"></div>
+            </div>
+        </div>
     </div>
 
     <!-- SCRIPT FIREBASE -->
@@ -276,6 +299,10 @@
         const urlParams = new URLSearchParams(window.location.search);
         const codigoLlavero = urlParams.get('c');
 
+        // MEJORA: Rate limiting (último guardado por llavero)
+        const ULTIMO_GUARDADO_KEY = `ultimoGuardado_${codigoLlavero}`;
+        const TIEMPO_ESPERA_SEG = 10; // 10 segundos
+
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
                 if (!file) return resolve(null);
@@ -295,6 +322,20 @@
             document.getElementById('modalBtn').onclick = () => overlay.classList.remove('active');
         }
 
+        // MEJORA: Sanitización de entradas para prevenir XSS
+        function sanitizarInput(texto) {
+            if (!texto) return '';
+            const mapa = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#x27;',
+                '/': '&#x2F;',
+            };
+            return texto.replace(/[&<>"'/]/g, function(m) { return mapa[m]; });
+        }
+
         const FIRMA_HTML = `
             <div class="mt-6 pt-4 text-center border-t border-[#404040]">
                 <p class="text-xs text-muted">Desarrollado por <span class="font-semibold text-gold">${VENDEDOR.nombre}</span></p>
@@ -310,9 +351,61 @@
             `;
         }
 
+        // MEJORA: Función para renderizar PDF con PDF.js
+        async function renderPDFConPDFjs(dataUrl, contenedor) {
+            const loading = document.getElementById('pdfLoading');
+            loading.style.display = 'block';
+
+            try {
+                // Extraer el base64 (sin el prefijo "data:application/pdf;base64,")
+                const base64 = dataUrl.split(',')[1];
+                const binaryString = atob(base64);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                // Usar PDF.js para cargar el documento
+                const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+                const page = await pdf.getPage(1);
+                const scale = 1.5; // Ajusta según necesites
+                const viewport = page.getViewport({ scale });
+
+                // Crear canvas
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
+
+                // Limpiar contenedor y añadir canvas
+                contenedor.innerHTML = '';
+                contenedor.appendChild(canvas);
+                loading.style.display = 'none';
+
+            } catch (error) {
+                console.error('Error al renderizar PDF:', error);
+                loading.style.display = 'none';
+                // Fallback: mostrar enlace de descarga
+                contenedor.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-center p-4">
+                        <p class="text-red-400 mb-2">No se pudo visualizar el PDF.</p>
+                        <a href="${dataUrl}" download="documento.pdf" class="btn-elegant btn-gold w-auto px-6">📥 Descargar PDF</a>
+                    </div>
+                `;
+            }
+        }
+
         function abrirVisor(dataUrl, titulo) {
             const viewer = document.getElementById('documentViewer');
             const body = document.getElementById('viewerBody');
+            const container = document.getElementById('pdfCanvasContainer');
             document.getElementById('viewerTitle').textContent = titulo || 'Documento';
 
             if (!dataUrl) {
@@ -323,12 +416,28 @@
             viewer.classList.add('active');
             document.body.style.overflow = 'hidden';
 
+            // Limpiar contenedor
+            container.innerHTML = '';
+            // Mostrar spinner de carga
+            const loading = document.createElement('div');
+            loading.className = 'loading-spinner';
+            loading.id = 'pdfLoading';
+            container.appendChild(loading);
+
             if (dataUrl.startsWith('data:image/')) {
-                body.innerHTML = `<div class="flex items-center justify-center h-full p-3"><img src="${dataUrl}" class="max-w-full max-h-full object-contain rounded-lg"></div>`;
+                // Imagen: mostrar directamente
+                container.innerHTML = `<img src="${dataUrl}" class="max-w-full max-h-full object-contain rounded-lg">`;
             } else if (dataUrl.startsWith('data:application/pdf')) {
-                body.innerHTML = `<iframe src="${dataUrl}" class="w-full h-full border-none"></iframe>`;
+                // MEJORA: Usar PDF.js en lugar de iframe
+                renderPDFConPDFjs(dataUrl, container);
             } else {
-                body.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-center p-4"><a href="${dataUrl}" download="documento" class="btn-elegant btn-gold w-auto px-6">📥 Descargar Documento</a></div>`;
+                // Otro tipo: ofrecer descarga
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-center p-4">
+                        <p class="text-gray-300 mb-2">Formato no soportado para vista previa.</p>
+                        <a href="${dataUrl}" download="documento" class="btn-elegant btn-gold w-auto px-6">📥 Descargar Documento</a>
+                    </div>
+                `;
             }
         }
 
@@ -381,6 +490,11 @@
         function mostrarFormularioRegistro(llaveroExistente = null, esEdicion = false, loggedUserEmail = null) {
             const app = document.getElementById('app');
 
+            // MEJORA: Aplicar sanitización a los valores existentes
+            const nombreSanitizado = llaveroExistente?.nombre_propietario ? sanitizarInput(llaveroExistente.nombre_propietario) : '';
+            const placaSanitizada = llaveroExistente?.placa_moto ? sanitizarInput(llaveroExistente.placa_moto) : '';
+            const telefonoSanitizado = llaveroExistente?.telefono_contacto ? sanitizarInput(llaveroExistente.telefono_contacto) : '';
+
             app.innerHTML = `
                 <div class="fade-up">
                     <div class="text-center mb-6">
@@ -393,15 +507,15 @@
                     <form id="registroForm" class="space-y-3 text-left">
                         <div>
                             <label class="block text-xs font-medium text-soft mb-1">Nombre Completo</label>
-                            <input type="text" id="nombre" value="${llaveroExistente?.nombre_propietario || ''}" required placeholder="Ej: Juan Pérez" class="input-elegant">
+                            <input type="text" id="nombre" value="${nombreSanitizado}" required placeholder="Ej: Juan Pérez" class="input-elegant">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-soft mb-1">Placa de la Moto</label>
-                            <input type="text" id="placa" value="${llaveroExistente?.placa_moto || ''}" required placeholder="Ej: M123ABC" class="input-elegant uppercase">
+                            <input type="text" id="placa" value="${placaSanitizada}" required placeholder="Ej: M123ABC" class="input-elegant uppercase">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-soft mb-1">Teléfono de Emergencia</label>
-                            <input type="tel" id="telefono" value="${llaveroExistente?.telefono_contacto || ''}" placeholder="Ej: 55551234" class="input-elegant">
+                            <input type="tel" id="telefono" value="${telefonoSanitizado}" placeholder="Ej: 55551234" class="input-elegant">
                         </div>
 
                         ${!esEdicion ? `
@@ -455,6 +569,23 @@
             document.getElementById('registroForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
 
+                // MEJORA: Verificar rate limiting
+                const ultimoGuardado = localStorage.getItem(ULTIMO_GUARDADO_KEY);
+                if (ultimoGuardado) {
+                    const tiempoTranscurrido = (Date.now() - parseInt(ultimoGuardado)) / 1000;
+                    if (tiempoTranscurrido < TIEMPO_ESPERA_SEG) {
+                        const segundosRestantes = Math.ceil(TIEMPO_ESPERA_SEG - tiempoTranscurrido);
+                        mostrarModal('⏳', 'Espera un momento', `Ya guardaste hace menos de ${TIEMPO_ESPERA_SEG} segundos. Intenta en ${segundosRestantes}s.`);
+                        return;
+                    }
+                }
+
+                // MEJORA: Validar que el usuario autenticado sea el propietario (ya se verifica, pero reforzamos)
+                if (esEdicion && currentOwnerEmail !== llaveroExistente?.owner_email) {
+                    mostrarModal('⛔', 'Acceso Denegado', 'El correo autenticado no coincide con el propietario registrado.');
+                    return;
+                }
+
                 if (!currentOwnerEmail && !esEdicion) {
                     mostrarModal('🔑', 'Cuenta requerida', 'Debes hacer clic en "Vincular con Google" antes de guardar.');
                     return;
@@ -474,11 +605,16 @@
                     if (fileTarjeta) urlTarjeta = await fileToBase64(fileTarjeta);
                     if (fileCalcomania) urlCalcomania = await fileToBase64(fileCalcomania);
 
+                    // MEJORA: Sanitizar entradas antes de guardar
+                    const nombre = sanitizarInput(document.getElementById('nombre').value);
+                    const placa = sanitizarInput(document.getElementById('placa').value.toUpperCase());
+                    const telefono = sanitizarInput(document.getElementById('telefono').value);
+
                     const docData = {
                         codigo: codigoLlavero,
-                        nombre_propietario: document.getElementById('nombre').value,
-                        placa_moto: document.getElementById('placa').value.toUpperCase(),
-                        telefono_contacto: document.getElementById('telefono').value,
+                        nombre_propietario: nombre,
+                        placa_moto: placa,
+                        telefono_contacto: telefono,
                         owner_email: currentOwnerEmail,
                         url_tarjeta: urlTarjeta,
                         url_calcomania: urlCalcomania,
@@ -487,6 +623,9 @@
                     };
 
                     await setDoc(doc(db, "llaveros", codigoLlavero), docData, { merge: true });
+
+                    // MEJORA: Actualizar timestamp de último guardado
+                    localStorage.setItem(ULTIMO_GUARDADO_KEY, Date.now().toString());
 
                     mostrarModal('🎉', '¡Guardado!', 'Los datos y documentos se han guardado exitosamente.');
                     setTimeout(() => location.reload(), 1500);
