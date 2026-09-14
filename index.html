@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>MotoDocs - Llavero digital</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Fuente: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- MEJORA: PDF.js (visor de PDF en móviles) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -201,7 +198,6 @@
         .fade-up { animation: fadeUp 0.5s ease forwards; opacity: 0; }
         @keyframes fadeUp { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: translateY(0); } }
 
-        /* MEJORA: Estilo para el canvas de PDF.js y el contenedor */
         #pdfCanvasContainer {
             width: 100%;
             height: 100%;
@@ -264,7 +260,6 @@
             <button class="px-4 py-2 bg-white/10 hover:bg-white/20 text-gray-300 rounded-full text-sm" id="btnCloseViewer">✕ Cerrar</button>
         </div>
         <div class="viewer-body" id="viewerBody">
-            <!-- MEJORA: Se usará un contenedor para el canvas o imagen -->
             <div id="pdfCanvasContainer" class="flex items-center justify-center w-full h-full">
                 <div class="loading-spinner" id="pdfLoading"></div>
             </div>
@@ -276,6 +271,9 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // Configurar worker de PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyC7L72sP3vg9_OoolZhcU8Ry0rgqFVz7tQ",
@@ -299,9 +297,9 @@
         const urlParams = new URLSearchParams(window.location.search);
         const codigoLlavero = urlParams.get('c');
 
-        // MEJORA: Rate limiting (último guardado por llavero)
         const ULTIMO_GUARDADO_KEY = `ultimoGuardado_${codigoLlavero}`;
-        const TIEMPO_ESPERA_SEG = 10; // 10 segundos
+        const TIEMPO_ESPERA_SEG = 10;
+        const MAX_FILE_SIZE = 350 * 1024; // 350 KB por archivo
 
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
@@ -322,7 +320,6 @@
             document.getElementById('modalBtn').onclick = () => overlay.classList.remove('active');
         }
 
-        // MEJORA: Sanitización de entradas para prevenir XSS
         function sanitizarInput(texto) {
             if (!texto) return '';
             const mapa = {
@@ -333,7 +330,7 @@
                 "'": '&#x27;',
                 '/': '&#x2F;',
             };
-            return texto.replace(/[&<>"'/]/g, function(m) { return mapa[m]; });
+            return String(texto).replace(/[&<>"'/]/g, function(m) { return mapa[m]; });
         }
 
         const FIRMA_HTML = `
@@ -351,13 +348,11 @@
             `;
         }
 
-        // MEJORA: Función para renderizar PDF con PDF.js
         async function renderPDFConPDFjs(dataUrl, contenedor) {
             const loading = document.getElementById('pdfLoading');
             loading.style.display = 'block';
 
             try {
-                // Extraer el base64 (sin el prefijo "data:application/pdf;base64,")
                 const base64 = dataUrl.split(',')[1];
                 const binaryString = atob(base64);
                 const len = binaryString.length;
@@ -366,13 +361,11 @@
                     bytes[i] = binaryString.charCodeAt(i);
                 }
 
-                // Usar PDF.js para cargar el documento
                 const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
                 const page = await pdf.getPage(1);
-                const scale = 1.5; // Ajusta según necesites
+                const scale = 1.5;
                 const viewport = page.getViewport({ scale });
 
-                // Crear canvas
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.width = viewport.width;
@@ -384,7 +377,6 @@
                 };
                 await page.render(renderContext).promise;
 
-                // Limpiar contenedor y añadir canvas
                 contenedor.innerHTML = '';
                 contenedor.appendChild(canvas);
                 loading.style.display = 'none';
@@ -392,11 +384,10 @@
             } catch (error) {
                 console.error('Error al renderizar PDF:', error);
                 loading.style.display = 'none';
-                // Fallback: mostrar enlace de descarga
                 contenedor.innerHTML = `
                     <div class="flex flex-col items-center justify-center h-full text-center p-4">
                         <p class="text-red-400 mb-2">No se pudo visualizar el PDF.</p>
-                        <a href="${dataUrl}" download="documento.pdf" class="btn-elegant btn-gold w-auto px-6">📥 Descargar PDF</a>
+                        <a href="${sanitizarInput(dataUrl)}" download="documento.pdf" class="btn-elegant btn-gold w-auto px-6">📥 Descargar PDF</a>
                     </div>
                 `;
             }
@@ -404,40 +395,35 @@
 
         function abrirVisor(dataUrl, titulo) {
             const viewer = document.getElementById('documentViewer');
-            const body = document.getElementById('viewerBody');
             const container = document.getElementById('pdfCanvasContainer');
             document.getElementById('viewerTitle').textContent = titulo || 'Documento';
 
-            if (!dataUrl) {
+            if (!dataUrl || typeof dataUrl !== 'string') {
                 mostrarModal('📄', 'No disponible', 'No se encontró el documento guardado.');
+                return;
+            }
+
+            // Validar que sea un Data URL permitido
+            const esImagen = dataUrl.startsWith('data:image/');
+            const esPDF = dataUrl.startsWith('data:application/pdf');
+            if (!esImagen && !esPDF) {
+                mostrarModal('📄', 'Formato no soportado', 'El documento no es una imagen o PDF válido.');
                 return;
             }
 
             viewer.classList.add('active');
             document.body.style.overflow = 'hidden';
 
-            // Limpiar contenedor
             container.innerHTML = '';
-            // Mostrar spinner de carga
             const loading = document.createElement('div');
             loading.className = 'loading-spinner';
             loading.id = 'pdfLoading';
             container.appendChild(loading);
 
-            if (dataUrl.startsWith('data:image/')) {
-                // Imagen: mostrar directamente
-                container.innerHTML = `<img src="${dataUrl}" class="max-w-full max-h-full object-contain rounded-lg">`;
-            } else if (dataUrl.startsWith('data:application/pdf')) {
-                // MEJORA: Usar PDF.js en lugar de iframe
+            if (esImagen) {
+                container.innerHTML = `<img src="${sanitizarInput(dataUrl)}" class="max-w-full max-h-full object-contain rounded-lg" alt="Documento">`;
+            } else if (esPDF) {
                 renderPDFConPDFjs(dataUrl, container);
-            } else {
-                // Otro tipo: ofrecer descarga
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-center p-4">
-                        <p class="text-gray-300 mb-2">Formato no soportado para vista previa.</p>
-                        <a href="${dataUrl}" download="documento" class="btn-elegant btn-gold w-auto px-6">📥 Descargar Documento</a>
-                    </div>
-                `;
             }
         }
 
@@ -472,7 +458,6 @@
                     const result = await signInWithPopup(auth, googleProvider);
                     const userEmail = result.user.email;
 
-                    // Si el llavero ya tiene un dueño asignado, verificamos que sea el mismo correo
                     if (llavero.owner_email && llavero.owner_email !== userEmail) {
                         modal.classList.remove('active');
                         mostrarModal('⛔', 'Acceso Denegado', 'Esta cuenta de Google no coincide con la del propietario registrado.');
@@ -490,17 +475,17 @@
         function mostrarFormularioRegistro(llaveroExistente = null, esEdicion = false, loggedUserEmail = null) {
             const app = document.getElementById('app');
 
-            // MEJORA: Aplicar sanitización a los valores existentes
             const nombreSanitizado = llaveroExistente?.nombre_propietario ? sanitizarInput(llaveroExistente.nombre_propietario) : '';
             const placaSanitizada = llaveroExistente?.placa_moto ? sanitizarInput(llaveroExistente.placa_moto) : '';
             const telefonoSanitizado = llaveroExistente?.telefono_contacto ? sanitizarInput(llaveroExistente.telefono_contacto) : '';
+            const codigoSeguro = sanitizarInput(codigoLlavero);
 
             app.innerHTML = `
                 <div class="fade-up">
                     <div class="text-center mb-6">
                         <span class="badge-gold">${esEdicion ? '✏️ Modo Edición' : '📝 Registro Inicial'}</span>
                         <h2 class="title text-2xl mt-2">${esEdicion ? 'Actualizar Datos' : 'Configurar Llavero'}</h2>
-                        <p class="subtitle mt-1">Código: <span class="font-mono bg-[#222222] px-3 py-1 rounded-full text-sm text-gold" style="border:1px solid #404040;">${codigoLlavero}</span></p>
+                        <p class="subtitle mt-1">Código: <span class="font-mono bg-[#222222] px-3 py-1 rounded-full text-sm text-gold" style="border:1px solid #404040;">${codigoSeguro}</span></p>
                         <div class="divider-gold"></div>
                     </div>
 
@@ -569,7 +554,6 @@
             document.getElementById('registroForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                // MEJORA: Verificar rate limiting
                 const ultimoGuardado = localStorage.getItem(ULTIMO_GUARDADO_KEY);
                 if (ultimoGuardado) {
                     const tiempoTranscurrido = (Date.now() - parseInt(ultimoGuardado)) / 1000;
@@ -580,7 +564,6 @@
                     }
                 }
 
-                // MEJORA: Validar que el usuario autenticado sea el propietario (ya se verifica, pero reforzamos)
                 if (esEdicion && currentOwnerEmail !== llaveroExistente?.owner_email) {
                     mostrarModal('⛔', 'Acceso Denegado', 'El correo autenticado no coincide con el propietario registrado.');
                     return;
@@ -599,13 +582,25 @@
                     const fileTarjeta = document.getElementById('fileTarjeta').files[0];
                     const fileCalcomania = document.getElementById('fileCalcomania').files[0];
 
+                    if (fileTarjeta && fileTarjeta.size > MAX_FILE_SIZE) {
+                        mostrarModal('⚠️', 'Archivo muy grande', `La tarjeta no debe superar ${MAX_FILE_SIZE / 1024} KB.`);
+                        btn.disabled = false;
+                        btn.innerText = 'Guardar';
+                        return;
+                    }
+                    if (fileCalcomania && fileCalcomania.size > MAX_FILE_SIZE) {
+                        mostrarModal('⚠️', 'Archivo muy grande', `La calcomanía no debe superar ${MAX_FILE_SIZE / 1024} KB.`);
+                        btn.disabled = false;
+                        btn.innerText = 'Guardar';
+                        return;
+                    }
+
                     let urlTarjeta = llaveroExistente?.url_tarjeta || null;
                     let urlCalcomania = llaveroExistente?.url_calcomania || null;
 
                     if (fileTarjeta) urlTarjeta = await fileToBase64(fileTarjeta);
                     if (fileCalcomania) urlCalcomania = await fileToBase64(fileCalcomania);
 
-                    // MEJORA: Sanitizar entradas antes de guardar
                     const nombre = sanitizarInput(document.getElementById('nombre').value);
                     const placa = sanitizarInput(document.getElementById('placa').value.toUpperCase());
                     const telefono = sanitizarInput(document.getElementById('telefono').value);
@@ -624,7 +619,6 @@
 
                     await setDoc(doc(db, "llaveros", codigoLlavero), docData, { merge: true });
 
-                    // MEJORA: Actualizar timestamp de último guardado
                     localStorage.setItem(ULTIMO_GUARDADO_KEY, Date.now().toString());
 
                     mostrarModal('🎉', '¡Guardado!', 'Los datos y documentos se han guardado exitosamente.');
@@ -645,8 +639,8 @@
                 <div class="fade-up">
                     <div class="text-center mb-5">
                         <span class="badge-gold">🚗 Documentos Digitales</span>
-                        <h1 class="title text-4xl mt-2 tracking-tight text-gold">${data.placa_moto || 'MOTO'}</h1>
-                        <p class="subtitle mt-1">Propietario: <span class="font-semibold text-soft">${data.nombre_propietario}</span></p>
+                        <h1 class="title text-4xl mt-2 tracking-tight text-gold">${sanitizarInput(data.placa_moto) || 'MOTO'}</h1>
+                        <p class="subtitle mt-1">Propietario: <span class="font-semibold text-soft">${sanitizarInput(data.nombre_propietario)}</span></p>
                         <div class="divider-gold"></div>
                     </div>
 
@@ -665,8 +659,8 @@
                     ${data.telefono_contacto ? `
                         <div class="mt-5 pt-4 border-t border-[#404040] text-center">
                             <p class="text-xs font-semibold text-muted uppercase tracking-wider mb-2">📞 Contacto de Emergencia</p>
-                            <a href="tel:${data.telefono_contacto}" class="inline-flex items-center gap-2 bg-[#222222] px-5 py-2.5 rounded-full text-sm font-semibold text-soft border border-[#404040]">
-                                <span>📱</span> ${data.telefono_contacto}
+                            <a href="tel:${sanitizarInput(data.telefono_contacto)}" class="inline-flex items-center gap-2 bg-[#222222] px-5 py-2.5 rounded-full text-sm font-semibold text-soft border border-[#404040]">
+                                <span>📱</span> ${sanitizarInput(data.telefono_contacto)}
                             </a>
                         </div>
                     ` : ''}
